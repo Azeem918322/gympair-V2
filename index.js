@@ -4,14 +4,19 @@ const cors = require("cors");
 const conf = require("./config");
 const morgan = require("morgan");
 const { verifySignUp } = require("./middlewares/index");
+const Reward = require("./controllers/rewards.js");
+
 // const Log = require("./models/log");
 const app = express();
 const expressip = require("express-ip");
 app.use(expressip().getIpInfoMiddleware);
 const mongoose = require("mongoose");
 mongoose.Promise = global.Promise;
-const path = require('path');
-const sharp = require('sharp');
+const path = require("path");
+const sharp = require("sharp");
+// const cron = require("node-cron");
+const cron = require("node-cron");
+const rewardsController = require("./controllers/cronjob");
 
 const db = {};
 
@@ -35,7 +40,7 @@ app.use(express.json());
 });*/
 
 // Log HTTP requests using Morgan with the custom token
-app.use(morgan('dev'));
+app.use(morgan("dev"));
 
 app.use(function (req, res, next) {
   res.header(
@@ -66,6 +71,10 @@ app.use(function (req, res, next) {
   }
 });
 */
+
+cron.schedule("* * * * *", function () {
+  rewardsController.sendCheckInReminders();
+});
 
 app.use("/uploads", express.static("uploads"));
 // parse requests of content-type - application/x-www-form-urlencoded
