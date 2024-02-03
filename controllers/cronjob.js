@@ -21,9 +21,14 @@ async function sendCheckInReminders() {
   const currentDate = new Date();
   currentDate.setHours(0, 0, 0, 0);
 
+  const twentyFourHoursAgo = new Date();
+  twentyFourHoursAgo.setHours(currentDate.getHours() - 24);
+
   const eligibleUsers = await UserCheckIn.find({
-    checkedInAt: { $lt: currentDate },
-    notificationSent: { $ne: true },
+    $or: [
+      { checkedInAt: { $lt: twentyFourHoursAgo } }, // User has not checked in within the last 24 hours
+      { lastPushSentAt: { $lt: twentyFourHoursAgo } }, // Last push notification sent more than 24 hours ago
+    ],
   });
 
   for (const user of eligibleUsers) {
@@ -32,12 +37,14 @@ async function sendCheckInReminders() {
       "Check In Reminder",
       "You can now check in to get a reward."
     );
+
     await UserCheckIn.updateOne(
       { _id: user._id },
-      { $set: { notificationSent: true } }
+      { $set: { lastPushSentAt: currentDate } } // Update last push sent time to the current date
     );
   }
 }
+
 function sendCheckInNotification(id, title, message) {
   User.findOne({ _id: id })
     .select("notificationToken")

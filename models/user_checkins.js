@@ -4,7 +4,7 @@ var Schema = mongoose.Schema;
 const userCheckInSchema = new Schema(
   {
     userID: { type: Schema.Types.ObjectId, ref: "gym_member" },
-    notificationSent: { type: Boolean, default: false },
+    lastPushSentAt: { type: Date, default: Date.now },
   },
   {
     timestamps: true,
