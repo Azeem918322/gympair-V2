@@ -72,8 +72,9 @@ app.use(function (req, res, next) {
 });
 */
 
-cron.schedule("* * * * *", function () {
-  rewardsController.sendCheckInReminders();
+cron.schedule("* * * * *", async function () {
+  await rewardsController.sendCheckInReminders();
+  await rewardsController.sendRewardsReminders();
 });
 
 app.use("/uploads", express.static("uploads"));

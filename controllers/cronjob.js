@@ -19,14 +19,17 @@ const axios = require("axios").default;
 async function sendCheckInReminders() {
   // Get the current date
   const currentDate = new Date();
-  currentDate.setHours(0, 0, 0, 0);
-
   const twentyFourHoursAgo = new Date();
   twentyFourHoursAgo.setHours(currentDate.getHours() - 24);
 
   const eligibleUsers = await UserCheckIn.find({
     $or: [
-      { checkedInAt: { $lt: twentyFourHoursAgo } }, // User has not checked in within the last 24 hours
+      {
+        $and: [
+          { createdAt: { $lt: twentyFourHoursAgo } },
+          { lastPushSentAt: { $exists: false } },
+        ],
+      }, // User has not checked in within the last 24 hours and has never received a push notification
       { lastPushSentAt: { $lt: twentyFourHoursAgo } }, // Last push notification sent more than 24 hours ago
     ],
   });
@@ -39,6 +42,38 @@ async function sendCheckInReminders() {
     );
 
     await UserCheckIn.updateOne(
+      { _id: user._id },
+      { $set: { lastPushSentAt: currentDate } } // Update last push sent time to the current date
+    );
+  }
+}
+
+async function sendRewardsReminders() {
+  // Get the current date
+  const currentDate = new Date();
+  const twentyTweHoursAgo = new Date();
+  twentyTweHoursAgo.setHours(currentDate.getHours() - 12);
+
+  const eligibleUsers = await Wallet.find({
+    $or: [
+      {
+        $and: [
+          { updatedAt: { $lt: twentyTweHoursAgo } },
+          { lastPushSentAt: { $exists: false } },
+        ],
+      }, // User has not checked in within the last 24 hours and has never received a push notification
+      { lastPushSentAt: { $lt: twentyTweHoursAgo } }, // Last push notification sent more than 24 hours ago
+    ],
+  });
+
+  for (const user of eligibleUsers) {
+    sendCheckInNotification(
+      user.user,
+      "Watched Rewarded Ad",
+      "You have to watching Ad for Receiving the points."
+    );
+
+    await Wallet.updateOne(
       { _id: user._id },
       { $set: { lastPushSentAt: currentDate } } // Update last push sent time to the current date
     );
@@ -82,4 +117,5 @@ function sendCheckInNotification(id, title, message) {
 }
 module.exports = {
   sendCheckInReminders,
+  sendRewardsReminders,
 };

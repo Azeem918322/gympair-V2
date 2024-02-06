@@ -7,7 +7,7 @@ var jwt = require("jsonwebtoken");
 var multer = require("multer");
 var fs = require("fs");
 const path = require("path");
-var cron=require('node-cron');
+var cron = require("node-cron");
 const Wallet = db.wallet;
 const TransactionDB = db.transaction;
 const moment = require("moment");
@@ -105,17 +105,17 @@ router.post("/challenge", [verifyToken, workout], async function (req, res) {
 
   let workoutNames = [
     "30 push up",
-    "30 sit-up",     
+    "30 sit-up",
     "30 crunches",
     "30 pull ups",
     "60 push up",
-    "60 sit-up",     
+    "60 sit-up",
     "60 crunches ",
     "60 pull ups",
     "120 push up",
-    "120 sit-up",      
-    "120 crunches", 
-    "120 pull ups"
+    "120 sit-up",
+    "120 crunches",
+    "120 pull ups",
   ];
 
   if (!workoutNames.includes(req.body.workout_name)) {
@@ -124,7 +124,6 @@ router.post("/challenge", [verifyToken, workout], async function (req, res) {
       message: "Workout Name Is Not Correct",
     });
   }
-
 
   let deadline = moment(req.body.date_time, "YYYY-MM-DD HH:mm");
   deadline.add(15, "minutes");
@@ -571,7 +570,8 @@ router.post("/challenge/:id/video", [verifyToken], function (req, res) {
                     .status(200)
                     .json({
                       status: true,
-                      message: "Your workout video has been received and in under review by moderator team.",
+                      message:
+                        "Your workout video has been received and in under review by moderator team.",
                       data: { challenge_video },
                     })
                     .end();
@@ -597,14 +597,14 @@ router.put("/challenge/:id", [verifyToken], async function (req, res) {
     if (err) {
       res.json({ status: false, message: err });
     } else {
-      if(!wout){
+      if (!wout) {
         return res
-        .status(400)
-        .json({
-          status: false,
-          message: "No Workout was found.",
-        })
-        .end();
+          .status(400)
+          .json({
+            status: false,
+            message: "No Workout was found.",
+          })
+          .end();
       }
       if (wout.status != 2) {
         res
@@ -630,14 +630,14 @@ router.put("/challenge/:id", [verifyToken], async function (req, res) {
           if (err) {
             res.json({ status: false, message: err });
           } else {
-            if(!workout_challenge){
+            if (!workout_challenge) {
               return res
-              .status(400)
-              .json({
-                status: false,
-                message: "No Workout Challenge was found.",
-              })
-              .end();
+                .status(400)
+                .json({
+                  status: false,
+                  message: "No Workout Challenge was found.",
+                })
+                .end();
             }
             workout_challenge["challenge_description"] =
               req.body.challenge_description;
@@ -650,79 +650,93 @@ router.put("/challenge/:id", [verifyToken], async function (req, res) {
 
             wout.save();
 
-            cron.schedule('*/2 * * * *', () => {
+            cron.schedule("*/2 * * * *", () => {
               // Find the record by its unique identifier and update its properties
-              if(wout["reward_given"] == false){
+              if (wout["reward_given"] == false) {
                 Workout.findByIdAndUpdate(wout["_id"], { under_review: false })
-                .then(() => {
-                  console.log('Record updated');
-                  Wallet.findOne({ user: wout["user"] }).exec(async function (err, wallet) {
-                    if (err) {
-                      res.json({ status: false, message: err });
-                    } else {
-                      if(wallet){
-                        const currentUser = await User.findById(wout["user"]).select(
-                          "username subscription"
-                        );
+                  .then(() => {
+                    console.log("Record updated");
+                    Wallet.findOne({ user: wout["user"] }).exec(async function (
+                      err,
+                      wallet
+                    ) {
+                      if (err) {
+                        res.json({ status: false, message: err });
+                      } else {
+                        if (wallet) {
+                          const currentUser = await User.findById(
+                            wout["user"]
+                          ).select("username subscription");
 
-                        let reward = 0;
-                        if(wout["fitness_level"] == "Beginner"){
-                          reward = 1;
-                          if(currentUser && currentUser.subscription == 1){
+                          let reward = 0;
+                          if (wout["fitness_level"] == "Beginner") {
+                            reward = 1;
+                            if (currentUser && currentUser.subscription == 1) {
+                              reward = 2;
+                            }
+                          } else if (wout["fitness_level"] == "Intermediate") {
                             reward = 2;
+                            if (currentUser && currentUser.subscription == 1) {
+                              reward = 4;
+                            }
+                          } else if (wout["fitness_level"] == "Advanced") {
+                            reward = 3;
+                            if (currentUser && currentUser.subscription == 1) {
+                              reward = 6;
+                            }
                           }
-                        }else if(wout["fitness_level"] == "Intermediate"){
-                          reward = 2;
-                          if(currentUser && currentUser.subscription == 1){
-                            reward = 4;
-                          }
-                        }else if(wout["fitness_level"] == "Advanced"){
-                          reward = 3;
-                          if(currentUser && currentUser.subscription == 1){
-                            reward = 6;
-                          }
+                          wallet["points"] = wallet.points + reward;
+                          wallet.save();
+
+                          wout["reward_given"] = true;
+                          wout["reward_accepted"] = true;
+                          wout["points_earned"] = reward;
+                          wout.save();
+
+                          addTransaction(
+                            wout["user"],
+                            wout["workout_name"],
+                            reward,
+                            0,
+                            "completed",
+                            wout["_id"]
+                          );
+
+                          sendPushNotification(
+                            wout["user"],
+                            "Workout Challenge Completed",
+                            "You Have Received the Workout Challenge Points"
+                          );
+
+                          savePointsReceivedNotification(
+                            6,
+                            wout["user"],
+                            wout["_id"]
+                          );
+
+                          sendPushNotification(
+                            wout["partner"],
+                            "Workout Challenge Completed",
+                            currentUser.username +
+                              " Completed the Workout Challenge"
+                          );
+
+                          savePointNotification(
+                            5,
+                            wout["user"],
+                            wout["partner"],
+                            wout["_id"]
+                          );
+                        } else {
+                          console.log("No Wallet found");
                         }
-                        wallet["points"] = wallet.points + reward;
-                        wallet.save();
-
-                        wout["reward_given"] = true;
-                        wout["reward_accepted"] = true;
-                        wout["points_earned"] = reward;
-                        wout.save();
-
-                        addTransaction(wout["user"], wout["workout_name"], reward, 0, "completed", wout["_id"]);
-
-                        
-
-                        sendPushNotification(
-                          wout["user"],
-                          "Workout Challenge Completed",
-                          "You Have Received the Workout Challenge Points"
-                        );
-
-                        savePointsReceivedNotification(6, wout["user"], wout["_id"]);
-
-
-                        sendPushNotification(
-                          wout["partner"],
-                          "Workout Challenge Completed",
-                          currentUser.username + " Completed the Workout Challenge"
-                        );
-                
-                        savePointNotification(5, wout["user"], wout["partner"], wout["_id"]);
-                      }else{
-                        console.log("No Wallet found");
                       }
-                      
-
-                    }
+                    });
+                  })
+                  .catch((error) => {
+                    console.error("Error updating record:", error);
                   });
-                })
-                .catch((error) => {
-                  console.error('Error updating record:', error);
-                });
               }
-              
             });
 
             res.json({
@@ -771,32 +785,33 @@ router.get("/completedChallenges", [verifyToken], function (req, res) {
       { $and: [{ complete: true }, { partner: req.userId }] },
     ],
   })
-  .populate('user','_id firstName lastName username profile_picture')
-  .populate('partner','_id firstName lastName username profile_picture')
-  .populate('challenge')
-  .sort({ createdAt: "desc" })
-  .exec(function(err, user) {
+    .populate("user", "_id firstName lastName username profile_picture")
+    .populate("partner", "_id firstName lastName username profile_picture")
+    .populate("challenge")
+    .sort({ createdAt: "desc" })
+    .exec(function (err, user) {
       if (err) {
-          res.status(500).json({ status: false, message: err });
+        res.status(500).json({ status: false, message: err });
       } else {
-          let data = [];
-          for (let userData of user){
-            let tempObj = {
-              PartnerName: userData.partner.firstName + ' ' + userData.partner.lastName,
-              Level: userData.fitness_level,
-              ChallengeType: userData.workout_name,
-              DateTime: userData.date_time,
-              PointsEarned: userData.points_earned || 0
-            }
-            data.push(tempObj);
-          }
-          res.status(200).json({
-            status: true,
-            message: "Completed Challenges List",
-            data: data
-          });
+        let data = [];
+        for (let userData of user) {
+          let tempObj = {
+            PartnerName:
+              userData.partner.firstName + " " + userData.partner.lastName,
+            Level: userData.fitness_level,
+            ChallengeType: userData.workout_name,
+            DateTime: userData.date_time,
+            PointsEarned: userData.points_earned || 0,
+          };
+          data.push(tempObj);
+        }
+        res.status(200).json({
+          status: true,
+          message: "Completed Challenges List",
+          data: data,
+        });
       }
-  });
+    });
 });
 
 router.post("/challenge/points/response", [verifyToken], function (req, res) {
@@ -839,48 +854,65 @@ router.post("/challenge/points/response", [verifyToken], function (req, res) {
               .end();
           } else {
             if (req.body.status == 2) {
-              if(ch["reward_given"] == false){
-                cron.schedule('*/2 * * * *', () => {
+              if (ch["reward_given"] == false) {
+                cron.schedule("*/2 * * * *", () => {
                   // Find the record by its unique identifier and update its properties
                   Workout.findByIdAndUpdate(ch["_id"], { under_review: false })
                     .then(() => {
-                      console.log('Record updated');
-                      Wallet.findOne({ user: ch["partner"] }).exec(async function (err, wallet) {
-                        if (err) {
-                          res.json({ status: false, message: err });
-                        } else {
-                          let reward = 0;
-                          if(ch["fitness_level"] == "Beginner"){
-                            reward = 2;
-                          }else if(ch["fitness_level"] == "Intermediate"){
-                            reward = 3;
-                          }else if(ch["fitness_level"] == "Advanced"){
-                            reward = 5;
+                      console.log("Record updated");
+                      Wallet.findOne({ user: ch["partner"] }).exec(
+                        async function (err, wallet) {
+                          if (err) {
+                            res.json({ status: false, message: err });
+                          } else {
+                            let reward = 0;
+                            if (ch["fitness_level"] == "Beginner") {
+                              reward = 2;
+                            } else if (ch["fitness_level"] == "Intermediate") {
+                              reward = 3;
+                            } else if (ch["fitness_level"] == "Advanced") {
+                              reward = 5;
+                            }
+                            wallet["points"] = wallet.points + reward;
+                            wallet.save();
+
+                            ch["reward_given"] = true;
+                            ch["reward_accepted"] = true;
+                            ch["points_earned"] = reward;
+                            ch.save();
+
+                            addTransaction(
+                              ch["partner"],
+                              ch["workout_name"],
+                              reward,
+                              0,
+                              "completed",
+                              wout["_id"]
+                            );
+
+                            saveAcceptChallengeNotification(
+                              5,
+                              req.userId,
+                              ch.user,
+                              ch._id
+                            );
+
+                            sendPushNotification(
+                              ch["partner"],
+                              "Workout Challenge Completed",
+                              "You Have Received the Workout Challenge Points"
+                            );
+                            savePointsReceivedNotification(
+                              6,
+                              wout["user"],
+                              wout["_id"]
+                            );
                           }
-                          wallet["points"] = wallet.points + reward;
-                          wallet.save();
-
-                          ch["reward_given"] = true;
-                          ch["reward_accepted"] = true;
-                          ch["points_earned"] = reward;
-                          ch.save();
-
-                          addTransaction(ch["partner"], ch["workout_name"], reward, 0, "completed", wout["_id"]);
-
-
-                          saveAcceptChallengeNotification(5, req.userId, ch.user, ch._id);
-
-                          sendPushNotification(
-                            ch["partner"],
-                            "Workout Challenge Completed",
-                            "You Have Received the Workout Challenge Points"
-                          );
-                          savePointsReceivedNotification(6, wout["user"], wout["_id"]);
                         }
-                      });
+                      );
                     })
                     .catch((error) => {
-                      console.error('Error updating record:', error);
+                      console.error("Error updating record:", error);
                     });
                 });
               }
@@ -901,38 +933,59 @@ router.get("/canCreateChallenge", [verifyToken], function (req, res) {
   Workout.find({
     user: req.userId,
     createdAt: {
-      $gte: moment().subtract(6, 'hours').toDate(), // Filter workouts created in the last 6 hours
-    }}).exec(function (err, result) {
+      $gte: moment().subtract(6, "hours").toDate(), // Filter workouts created in the last 6 hours
+    },
+  }).exec(function (err, result) {
     if (err) {
       res.status(400).send({ status: false, message: err }).end();
     } else {
-      User.findOne({ _id: req.userId }, "subscription subscriptionExpiry").exec(function (
-        e,
-        user
-      ) {
-        if (e) {
-          console.log(e);
-        } else {
-          console.log("user", user);
-          const currentDate = new Date();
-          if(user && user.subscription === 1 && user.subscriptionExpiry > currentDate.getTime()){
-            console.log("result.length", result.length);
+      User.findOne({ _id: req.userId }, "subscription subscriptionExpiry").exec(
+        function (e, user) {
+          if (e) {
+            console.log(e);
+          } else {
+            console.log("user", user);
+            const currentDate = new Date();
+            if (
+              user &&
+              user.subscription === 1 &&
+              user.subscriptionExpiry > currentDate.getTime()
+            ) {
+              console.log("result.length", result.length);
 
-            if (result.length > 1) {
-              res.status(200).json({ status: false, message: "User Can't Create Challenge" }).end();
+              if (result.length > 1) {
+                res
+                  .status(200)
+                  .json({
+                    status: false,
+                    message: "User Can't Create Challenge",
+                  })
+                  .end();
+              } else {
+                res
+                  .status(200)
+                  .json({ status: true, message: "User Can Create Challenge" })
+                  .end();
+              }
             } else {
-              res.status(200).json({ status: true, message: "User Can Create Challenge"}).end();
-            }
-          }else{
-            if (result.length > 0) {
-              res.status(200).json({ status: false, message: "User Can't Create Challenge" }).end();
-            } else {
-              res.status(200).json({ status: true, message: "User Can Create Challenge" }).end();
+              if (result.length > 0) {
+                res
+                  .status(200)
+                  .json({
+                    status: false,
+                    message: "User Can't Create Challenge",
+                  })
+                  .end();
+              } else {
+                res
+                  .status(200)
+                  .json({ status: true, message: "User Can Create Challenge" })
+                  .end();
+              }
             }
           }
         }
-      });
-      
+      );
     }
   });
 });
@@ -962,41 +1015,44 @@ router.get("/challenge/adsReward", [verifyToken], function (req, res) {
 });
 
 router.get("/transactions", [verifyToken], function (req, res) {
-  TransactionDB.find({ "user": req.userId }).exec(function(err, transactions) {
-      if (err) {
-          res.status(500).json({ status: false, message: err });
-      } else {
-          console.log("transactions", transactions);
-          let sum = 0;
-          let data = {
-              points: 0,
-              transactions: {}
-          }
-          let transactionsArray = {};
-          for (let transactionData of transactions){
-            sum += transactionData.points;
-            let workoutName = "";
-            if(transactionData.type == 0){
-              workoutName = transactionData?.workout?.workout_name;
-            }else {
-              workoutName = "AdsReward";
-            }
-            let tempObj = {
-              Name: workoutName,
-              Description: transactionData.description || "",
-              Points: transactionData.points || 0
-            }
-            var ts_hms = new Date(transactionData.createdAt).toISOString().slice(0, 10);
+  TransactionDB.find({ user: req.userId }).exec(function (err, transactions) {
+    if (err) {
+      res.status(500).json({ status: false, message: err });
+    } else {
+      console.log("transactions", transactions);
+      let sum = 0;
+      let data = {
+        points: 0,
+        transactions: {},
+      };
+      let transactionsArray = {};
+      for (let transactionData of transactions) {
+        sum += transactionData.points;
+        let workoutName = "";
+        if (transactionData.type == 0) {
+          workoutName = transactionData?.workout?.workout_name;
+        } else {
+          workoutName = "AdsReward";
+        }
+        let tempObj = {
+          Name: workoutName,
+          Description: transactionData.description || "",
+          Points: transactionData.points || 0,
+        };
+        var ts_hms = new Date(transactionData.createdAt)
+          .toISOString()
+          .slice(0, 10);
 
-            let date = ts_hms;
-            transactionsArray[date] = transactionsArray[date]?.length > 0 ? transactionsArray[date] : [];
-            transactionsArray[date].push(tempObj);
-          }
-
-          data.points = sum;
-          data.transactions = transactionsArray;
-          res.status(200).json({ status: true, message:"", data: data});
+        let date = ts_hms;
+        transactionsArray[date] =
+          transactionsArray[date]?.length > 0 ? transactionsArray[date] : [];
+        transactionsArray[date].push(tempObj);
       }
+
+      data.points = sum;
+      data.transactions = transactionsArray;
+      res.status(200).json({ status: true, message: "", data: data });
+    }
   });
 });
 
@@ -1131,7 +1187,7 @@ var saveAdsNotification = function (type, receiver) {
       var not = new Notification({
         type: type,
         receiver: receiver,
-        content: "Watched Rewarded Ad"
+        content: "Watched Rewarded Ad",
       });
 
       not.save();
@@ -1166,15 +1222,22 @@ var saveAcceptChallengeNotification = function (
   });
 };
 
-var addTransaction = function(user, name, points, type, description, workout = null) {
+var addTransaction = function (
+  user,
+  name,
+  points,
+  type,
+  description,
+  workout = null
+) {
   var trans = new TransactionDB({
-      description: description,
-      points: points,
-      workout: workout,
-      type: type,
-      user: user
+    description: description,
+    points: points,
+    workout: workout,
+    type: type,
+    user: user,
   });
   trans.save();
   //implement notifictaion here
   return;
-}
+};

@@ -1409,6 +1409,32 @@ router.get("/block/:id", [verifyToken], function (req, res) {
     }
   });
 });
+
+router.get("/blocklist", [verifyToken], function (req, res) {
+  User.findOne({ _id: req.userId }).exec(function (err, user) {
+    if (err) {
+      console.log(err);
+      res.status(500).json({ status: false, message: "Internal Server Error" });
+    } else {
+      const blocklist = user.blocklist || [];
+
+      User.find(
+        { _id: { $in: blocklist } },
+        "_id username firstName lastName email profile_picture"
+      ).exec(function (err, blockedUsers) {
+        if (err) {
+          console.log(err);
+          res
+            .status(500)
+            .json({ status: false, message: "Internal Server Error" });
+        } else {
+          res.status(200).json({ status: true, blockedUsers });
+        }
+      });
+    }
+  });
+});
+
 router.get("/unblock/:id", [verifyToken], function (req, res) {
   User.findOne({ _id: req.userId }).exec(function (err, user) {
     if (err) {
