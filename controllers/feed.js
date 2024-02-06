@@ -219,7 +219,22 @@ router.get("/list", [verifyToken], function (req, res) {
           console.log(err);
           res.status(500).json({ status: false, message: err });
         } else {
-          res.status(200).json({ status: true, data: posts });
+          // Exclude blocked users
+          const userIdsToExclude = posts.map((post) => post.user._id);
+          User.find({ _id: { $in: userIdsToExclude } })
+            .where({ blockList: { $ne: req.userId } }) // Exclude users in block list
+            .exec(function (err, users) {
+              if (err) {
+                console.log(err);
+                res.status(500).json({ status: false, message: err });
+              } else {
+                const allowedPosts = posts.filter(
+                  (post) =>
+                    !users.some((user) => user._id.equals(post.user._id))
+                );
+                res.status(200).json({ status: true, data: allowedPosts });
+              }
+            });
         }
       });
   } else if (req.query.feed == "private") {
@@ -338,6 +353,11 @@ router.get("/list", [verifyToken], function (req, res) {
           cb(null, feed);
         }
       });
+  }
+
+  // New function filter out posts from users in the blocklist
+  function excludeBlockedPosts(posts, blocklist) {
+    return posts.filter((post) => !blocklist.includes(post.user._id));
   }
 });
 
