@@ -1,5 +1,5 @@
-var express = require('express')
-var router = express.Router()
+var express = require("express");
+var router = express.Router();
 const config = require("../config");
 const db = require("../models");
 const { verifyToken } = require("../middlewares/verifyToken");
@@ -14,7 +14,7 @@ const GymPair = db.gymPair;
 const Chat = db.Chat;
 const Message = db.Message;
 const Notification = db.notification;
-const Muscle=db.muscle;
+const Muscle = db.muscle;
 router.post("/", function (req, res) {
   req.body["created_by"] = req.body.created_by ? req.body.created_by : "admin";
   Gym.create(req.body, function (err, gym) {
@@ -25,107 +25,110 @@ router.post("/", function (req, res) {
         status: true,
         message: "Gym created successfully",
         data: gym,
-	        });
+      });
     }
   });
 });
-router.get('/',function(req,res){
-	Gym.find()
-	.exec(function(err,gyms){
-		if(err){
-			res.status(500).json({status:false,message:err,code:500});
-		}else{
-			res.status(200).json(
-        {
-          gyms:gyms
-        });
-		};
+router.get("/", function (req, res) {
+  Gym.find().exec(function (err, gyms) {
+    if (err) {
+      res.status(500).json({ status: false, message: err, code: 500 });
+    } else {
+      res.status(200).json({
+        gyms: gyms,
+      });
+    }
+  });
 });
-});
-router.post('/search',function(req,res){
-	Gym.find()
-	.where({$and:[{latitude:req.body.latitude},{longitude:req.body.longitude}]})
-	.exec(function(err,gyms){
-			if(err){
-			res.status(500).json({status:false,message:err,code:500});
-		}else{
-			if(gyms&&gyms.length==0){
-				res.status(200).json({status:false,message:"No gym at this location"});
-			}else{
-			res.status(200).json(
-        {
-          gyms:gyms
-        });
-		}
-		};
-	});
+router.post("/search", function (req, res) {
+  Gym.find()
+    .where({
+      $and: [
+        { latitude: req.body.latitude },
+        { longitude: req.body.longitude },
+      ],
+    })
+    .exec(function (err, gyms) {
+      if (err) {
+        res.status(500).json({ status: false, message: err, code: 500 });
+      } else {
+        if (gyms && gyms.length == 0) {
+          res
+            .status(200)
+            .json({ status: false, message: "No gym at this location" });
+        } else {
+          res.status(200).json({
+            gyms: gyms,
+          });
+        }
+      }
+    });
 });
 //delete one user's gym
-router.delete('/user/:id',[verifyToken],function(req,res){
-	
-})
-router.get('/prompt',[verifyToken],function(req,res){//check if user doesnt have gym saved
-	User.findOne({_id:req.userId},'gym')
-	.populate('gym')
-	.exec(function(err,usr){
-		if(err){
-			res.status(500).json({error:err});
-		}else{
-			if(!usr.gym||usr.gym.length==0){
-				res.status(200).json({status:true,data:true})
-			}else if(usr.gym&&usr.gym.length==1&&usr.gym[0].type==1){//station saved,no gym
-				res.status(200).json({status:true,data:true})
-			}else{
-				res.status(200).json({status:true,data:false})
-			}
-		}
-	});
-})
-router.get('/:id',function(req,res){
-	Gym.findOne({_id:req.params.id})
-	.exec(function(err,gym){
-		if(err){
-			res.status(500).json({status:false,message:err,code:500});
-		}else{
-			res.status(200).json(
-        {
-        		status:true,        		
-          		data:gym
-        });
-		};
-	})
+router.delete("/user/:id", [verifyToken], function (req, res) {});
+router.get("/prompt", [verifyToken], function (req, res) {
+  //check if user doesnt have gym saved
+  User.findOne({ _id: req.userId }, "gym")
+    .populate("gym")
+    .exec(function (err, usr) {
+      if (err) {
+        res.status(500).json({ error: err });
+      } else {
+        if (!usr.gym || usr.gym.length == 0) {
+          res.status(200).json({ status: true, data: true });
+        } else if (usr.gym && usr.gym.length == 1 && usr.gym[0].type == 1) {
+          //station saved,no gym
+          res.status(200).json({ status: true, data: true });
+        } else {
+          res.status(200).json({ status: true, data: false });
+        }
+      }
+    });
 });
-router.post('/search',function(req,res){
-	Gym.find()
-	where({$and:[{latitude:req.body.latitude},{longitude:req.body.longitude}]})
-	.exec(function(err,gyms){
-			if(err){
-			res.status(500).json({status:false,message:err,code:500});
-		}else{
-			if(gyms&&gyms.length==0){
-				res.status(204).json({staus:false,message:"No gym at this location"});
-			}else{
-			res.status(200).json(
-        {
-          gyms:gyms
-        });
-		}
-		};
-	});
+router.get("/:id", function (req, res) {
+  Gym.findOne({ _id: req.params.id }).exec(function (err, gym) {
+    if (err) {
+      res.status(500).json({ status: false, message: err, code: 500 });
+    } else {
+      res.status(200).json({
+        status: true,
+        data: gym,
+      });
+    }
+  });
 });
-router.put('/:id',function(req,res){
-	Gym.findOneAndUpdate(
-		{_id: req.body._id},
-		 {$set:req.body},
-		 {new:true},
-		 function(err,gym){
-		if(err){
-			res.status(500).json({status:false,message:err,code:500});
-		}else{
-			res.status(200).json(
-        {
-        		status:true,        		
-          		message:"Gym Data updated successfully"
+router.post("/search", function (req, res) {
+  Gym.find();
+  where({
+    $and: [{ latitude: req.body.latitude }, { longitude: req.body.longitude }],
+  }).exec(function (err, gyms) {
+    if (err) {
+      res.status(500).json({ status: false, message: err, code: 500 });
+    } else {
+      if (gyms && gyms.length == 0) {
+        res
+          .status(204)
+          .json({ staus: false, message: "No gym at this location" });
+      } else {
+        res.status(200).json({
+          gyms: gyms,
+        });
+      }
+    }
+  });
+});
+router.put("/:id", function (req, res) {
+  Gym.findOneAndUpdate(
+    { _id: req.body._id },
+    { $set: req.body },
+    { new: true },
+    function (err, gym) {
+      if (err) {
+        res.status(500).json({ status: false, message: err, code: 500 });
+      } else {
+        res.status(200).json({
+          status: true,
+          message: "Gym Data updated successfully",
         });
       }
     }
@@ -146,7 +149,7 @@ router.delete("/:id", function (req, res) {
 
 router.get("/musclediagram/:type/:gender", async function (req, res) {
   console.log("req.params", req.params);
-  let gender=req.params.gender?req.params.gender:'male';
+  let gender = req.params.gender ? req.params.gender : "male";
   let type = req.params.type;
 
   /*if (req.params.type == "chest") {
@@ -182,13 +185,15 @@ router.get("/musclediagram/:type/:gender", async function (req, res) {
   } else if (req.params.type == "none") {
     type = "";
   }*/
-  Muscle.find({bodyPart:type,gender:gender},function(e,record){
-    if(e){
-      res.json({status:false,error:e})
-    }else{
-      res.json({status: true,
-    message: "Muscle diagram link fetched successfully",
-    data: record});
+  Muscle.find({ bodyPart: type, gender: gender }, function (e, record) {
+    if (e) {
+      res.json({ status: false, error: e });
+    } else {
+      res.json({
+        status: true,
+        message: "Muscle diagram link fetched successfully",
+        data: record,
+      });
     }
   });
   /*let myResult = await fetchData(
@@ -242,8 +247,6 @@ router.get("/musclediagram/:type/:gender", async function (req, res) {
 
     return result;
   });*/
-
-  
 });
 
 async function fetchData(url) {
@@ -292,7 +295,7 @@ router.post(
             latitude: gymData.latitude,
             longitude: gymData.longitude,
             type: gymData.type,
-        });
+          });
 
           if (gymExist) {
             gymId = gymExist._id;
@@ -317,7 +320,7 @@ router.post(
             date: req.body.date,
             request_by: req.userId,
             description: req.body.description,
-		};
+          };
 
           GymPair.create(request, function (er, re) {
             if (er) {
@@ -364,8 +367,8 @@ router.post(
                         } else {
                           sendPushNotification(
                             req.body.partnerId,
-                            "Gym Date Request",
-                            " Send a Gympair Request"
+                            "Workout Request",
+                            " Send a Fitpair Request"
                           );
                           saveNotification(2, req.userId, req.body.partnerId);
                           res.status(200).json({
@@ -405,8 +408,8 @@ router.post(
                               } else {
                                 sendPushNotification(
                                   req.body.partnerId,
-                                  "Gym Date Request",
-                                  " Send a Gympair Request"
+                                  "Workout Request",
+                                  " Send a Fitpair Request"
                                 );
                                 saveNotification(
                                   2,
@@ -454,7 +457,7 @@ router.get("/respond_date_request/:id", [verifyToken], function (req, res) {
             var user = req.userId == fr["user"] ? fr["partner"] : fr["user"];
             sendPushNotification(
               user,
-              "Gym Date Request",
+              "Workout Request",
               " Gym Pair Request Responded."
             );
             res.status(200).json({
@@ -521,7 +524,7 @@ var saveNotification = function (type, sender, receiver) {
         type: 2,
         user: sender,
         receiver: receiver,
-        content: "Send a Gympair Request",
+        content: "Send a Fitpair Request",
         is_accepted: false,
       });
       not.save();

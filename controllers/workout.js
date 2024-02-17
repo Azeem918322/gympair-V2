@@ -944,15 +944,14 @@ router.get("/canCreateChallenge", [verifyToken], function (req, res) {
           if (e) {
             console.log(e);
           } else {
-            console.log("user", user);
+            console.log("user.subscription-->", user.subscription);
             const currentDate = new Date();
+
             if (
               user &&
               user.subscription === 1 &&
               user.subscriptionExpiry > currentDate.getTime()
             ) {
-              console.log("result.length", result.length);
-
               if (result.length > 1) {
                 res
                   .status(200)
