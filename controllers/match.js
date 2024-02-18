@@ -1435,6 +1435,52 @@ router.get("/blocklist", [verifyToken], function (req, res) {
   });
 });
 
+router.get("/block-report/:id", [verifyToken], function (req, res) {
+  User.findOne({ _id: req.userId }).exec(function (err, user) {
+    if (err) {
+      console.log(err);
+      res.status(500).json({ status: false, message: "Internal Server Error" });
+    } else {
+      // Block user
+      if (user.blocklist && user.blocklist.length > 0) {
+        user.blocklist.includes(req.params.id)
+          ? user.blocklist
+          : user.blocklist.push(req.params.id);
+      } else {
+        user.blocklist = [req.params.id];
+      }
+
+      // Remove from following and followers
+      user.followings =
+        user.followings && user.followings.length > 0
+          ? user.followings.filter((n) => !n.equals(req.params.id))
+          : user.followings;
+      user.followers =
+        user.followers && user.followers.length > 0
+          ? user.followers.filter((n) => !n.equals(req.params.id))
+          : user.followers;
+
+      // Report user
+      if (!user.reportedUsers.includes(req.params.id)) {
+        user.reportedUsers.push(req.params.id);
+      }
+      user.save(function (saveErr) {
+        if (saveErr) {
+          console.log(saveErr);
+          res
+            .status(500)
+            .json({ status: false, message: "Error saving user changes" });
+        } else {
+          // Respond with success message
+          res
+            .status(200)
+            .json({ status: true, message: "User blocked and reported." });
+        }
+      });
+    }
+  });
+});
+
 router.get("/unblock/:id", [verifyToken], function (req, res) {
   User.findOne({ _id: req.userId }).exec(function (err, user) {
     if (err) {
