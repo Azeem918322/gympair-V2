@@ -228,7 +228,102 @@ router.get("/checkInReward", [verifyToken], function (req, res) {
     }
   );
 });
+router.get("/checkInStatus", [verifyToken], async function (req, res) {
+  try {
+    const streakSize = 7; // Set the desired streak size
+    let currentStreak = 0;
+    let previousDate;
+    let streakCheckIns = [];
+    let firstDate;
+    const checkIns = await UserCheckIn.find({ userID: req.userId })
+      .sort({ createdAt: -1 })
+      .limit(streakSize)
+      .exec();
+    for (const checkIn of checkIns) {
+      if (!previousDate || isConsecutiveDays(previousDate, checkIn.createdAt)) {
+        firstDate = checkIns[0].createdAt;
+        // If the previous date is not set or the current check-in is consecutive, continue streak
+        currentStreak++;
+        streakCheckIns.push({
+          id: checkIn._id,
+          date: checkIn.createdAt,
+          isCheckin: true,
+        });
+      }
 
+      if (currentStreak >= streakSize) {
+        break;
+      }
+
+      previousDate = checkIn.createdAt;
+    }
+
+    // Check if the last check-in was before 24 hours ago
+    const lastCheckInTime = new Date(checkIns[0].createdAt).getTime();
+    const currentTime = new Date().getTime();
+    var currentDate;
+    if (
+      currentTime - lastCheckInTime >= 24 * 60 * 60 * 1000 ||
+      currentStreak >= 7
+    ) {
+      currentDate = new Date();
+      // Set the time to the beginning of the day
+      currentDate.setHours(0, 0, 0, 0);
+
+      if (currentStreak >= 7) {
+        currentDate = new Date();
+        currentDate.setDate(currentDate.getDate() + 1);
+        currentDate.setHours(0, 0, 0, 0);
+      } else {
+        currentDate = new Date();
+
+        // Set the time to the beginning of the day
+        currentDate.setHours(0, 0, 0, 0);
+      }
+      currentStreak = 0; // Set currentStreak to zero if last check-in was before 24 hours ago
+      streakCheckIns = []; // Clear the streakCheckIns array
+      firstDate = currentDate;
+    }
+
+    const length = currentStreak;
+    const remainder = length % 7;
+
+    const array = [];
+
+    for (let i = 0; i < 7 - remainder; i++) {
+      const nextDate = calculateNextDate(firstDate || new Date());
+      streakCheckIns.push({
+        date: nextDate,
+        isCheckin: false,
+      });
+      firstDate = nextDate;
+    }
+    streakCheckIns.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    res.status(200).json({
+      status: true,
+      checkInStatusList: streakCheckIns,
+    });
+  } catch (error) {
+    console.error("Error checking check-in status:", error);
+    res
+      .status(500)
+      .json({ status: false, message: "Error checking check-in status" });
+  }
+});
+
+// Function to check if two dates are consecutive days (ignoring time)
+function isConsecutiveDays(date1, date2) {
+  const oneDay = 24 * 60 * 60 * 1000; // One day in milliseconds
+  const stripTime = (date) => new Date(date.toISOString().split("T")[0]);
+  return stripTime(date1) - stripTime(date2) === oneDay;
+}
+
+function calculateNextDate(previousDate) {
+  const nextDate = new Date(previousDate);
+  nextDate.setDate(nextDate.getDate() + 1);
+  return nextDate;
+}
 var addTransaction = function (
   user,
   name,
