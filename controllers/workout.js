@@ -131,12 +131,12 @@ router.post("/challenge", [verifyToken, workout], async function (req, res) {
   deadline = deadline.format("YYYY-MM-DDTHH:mm");
   date_time = date_time.format("YYYY-MM-DDTHH:mm");
 
-  if (req.body.partner == req.userId) {
-    return res
-      .status(400)
-      .json({ status: false, message: "You cannot challenge yourself" })
-      .end();
-  }
+  // if (req.body.partner == req.userId) {
+  //   return res
+  //     .status(400)
+  //     .json({ status: false, message: "You cannot challenge yourself" })
+  //     .end();
+  // }
 
   var w_out = new Workout({
     user: req.userId,
@@ -158,108 +158,6 @@ router.post("/challenge", [verifyToken, workout], async function (req, res) {
       if (err) {
         res.status(500).json({ error: err });
       } else {
-        // Chat.findOne({
-        //   $or: [
-        //     {
-        //       $and: [{ user1: req.userId }, { user2: req.body.partner }],
-        //     },
-        //     {
-        //       $and: [{ user2: req.userId }, { user1: req.body.partner }],
-        //     },
-        //   ],
-        // }).exec(function (err, chat) {
-        //   if (err) {
-        //     res.status(500).json({ status: false, message: err });
-        //   } else {
-        //     if (chat) {
-        //       if (!chat.initiated) {
-        //         chat.initiated = true;
-        //         chat.save();
-        //       }
-
-        //       Message.create(
-        //         {
-        //           chat: chat._id,
-        //           sender: req.userId,
-        //           reciever: req.body.partner,
-        //           isLike: false,
-        //           messageType: 2,
-        //           workoutMessage: w_out._id,
-        //           text: "[WORKOUT_CHALLENGE_REQUEST]",
-        //         },
-        //         (err, msg) => {
-        //           if (err) {
-        //             res.status(500).json({ status: false, message: err });
-        //           } else {
-        //             sendPushNotification(
-        //               req.body.partner,
-        //               "Workout Challenge",
-        //               currentUser + " sent you a workout challenge"
-        //             );
-
-        //             saveNotification(
-        //               3,
-        //               req.userId,
-        //               req.body.partner,
-        //               w_out._id
-        //             );
-        //           }
-        //         }
-        //       );
-        //     } else {
-        //       Chat.create(
-        //         {
-        //           user1: req.userId,
-        //           user2: req.body.partner,
-        //           initiated: true,
-        //         },
-        //         (err, newChat) => {
-        //           if (err) {
-        //             res.status(500).json({ status: false, message: err });
-        //           } else {
-        //             Message.create(
-        //               {
-        //                 chat: newChat._id,
-        //                 sender: req.userId,
-        //                 reciever: req.body.partner,
-        //                 isLike: false,
-        //                 messageType: 2,
-        //                 workoutMessage: w_out._id,
-        //                 text: "[WORKOUT_CHALLENGE_REQUEST]",
-        //               },
-        //               (err, msg) => {
-        //                 if (err) {
-        //                   res.status(500).json({ status: false, message: err });
-        //                 } else {
-        //                   sendPushNotification(
-        //                     req.body.partner,
-        //                     "Workout Challenge",
-        //                     currentUser + " sent you a workout challenge"
-        //                   );
-
-        //                   saveNotification(
-        //                     3,
-        //                     req.userId,
-        //                     req.body.partner,
-        //                     w_out._id
-        //                   );
-        //                 }
-        //               }
-        //             );
-        //           }
-        //         }
-        //       );
-        //     }
-
-        //     const randomIndex = Math.floor(Math.random() * ch.length);
-
-        //     res.status(200).json({
-        //       workout_id: w_out["_id"],
-        //       challenge: ch.length > 0 ? ch[randomIndex] : [],
-        //     });
-        //   }
-        // });
-
         sendPushNotification(
           req.body.partner,
           "Workout Challenge",
@@ -300,6 +198,82 @@ router.post("/challenge", [verifyToken, workout], async function (req, res) {
         });
       }
     });
+});
+
+router.get("/pending/:type", [verifyToken], function (req, res) {
+  try {
+    const type = req.params.type;
+    let query = {};
+
+    if (type === "send") {
+      // Get pending workouts sent by the user
+      query = { user: req.userId, status: 1 };
+    } else if (type === "receive") {
+      // Get pending workouts received by the user
+      query = { partner: req.userId, status: 1 };
+    } else {
+      return res
+        .status(400)
+        .json({ status: false, message: "Invalid type parameter" });
+    }
+
+    Workout.find(query)
+      .populate("user", "_id firstName lastName username profile_picture")
+      .populate("partner", "_id firstName lastName username profile_picture")
+      .sort({ createdAt: "desc" })
+      .exec(function (err, user) {
+        if (err) {
+          res.status(500).json({ status: false, message: err });
+        } else {
+          res.status(200).json({
+            status: true,
+            message: "Completed Challenges List",
+            data: user,
+          });
+        }
+      });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ status: false, message: "Internal Server Error" });
+  }
+});
+
+router.get("/approved/:type", [verifyToken], function (req, res) {
+  try {
+    const type = req.params.type;
+    let query = {};
+
+    if (type === "send") {
+      // Get pending workouts sent by the user
+      query = { user: req.userId, status: 2 };
+    } else if (type === "receive") {
+      // Get pending workouts received by the user
+      query = { partner: req.userId, status: 2 };
+    } else {
+      return res
+        .status(400)
+        .json({ status: false, message: "Invalid type parameter" });
+    }
+
+    Workout.find(query)
+      .populate("user", "_id firstName lastName username profile_picture")
+      .populate("partner", "_id firstName lastName username profile_picture")
+      .sort({ createdAt: "desc" })
+      .exec(function (err, user) {
+        if (err) {
+          res.status(500).json({ status: false, message: err });
+        } else {
+          res.status(200).json({
+            status: true,
+            message: "Completed Challenges List",
+            data: user,
+          });
+        }
+      });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ status: false, message: "Internal Server Error" });
+  }
 });
 
 router.get("/workout_challenge", [verifyToken], function (req, res) {
