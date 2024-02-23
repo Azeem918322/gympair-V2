@@ -61,7 +61,8 @@ const challengeValidator = async (req, res, next) => {
 const W_out = joi.object({
   partner: joi.string().required(),
   fitness_level: joi.string().required(),
-  workout_name: joi.string().required(),
+  // workout_name: joi.string().required(),
+  workout_id: joi.string().required(),
   date_time: joi.string().required(),
 });
 

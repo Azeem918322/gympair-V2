@@ -103,26 +103,9 @@ router.post("/challenge", [verifyToken, workout], async function (req, res) {
     });
   }
 
-  let workoutNames = [
-    "30 push up",
-    "30 sit-up",
-    "30 crunches",
-    "30 pull ups",
-    "60 push up",
-    "60 sit-up",
-    "60 crunches ",
-    "60 pull ups",
-    "120 push up",
-    "120 sit-up",
-    "120 crunches",
-    "120 pull ups",
-  ];
-
-  if (!workoutNames.includes(req.body.workout_name)) {
-    return res.status(400).json({
-      status: false,
-      message: "Workout Name Is Not Correct",
-    });
+  const challenge = await Workout_challenge.findById(req.body.workout_id);
+  if (!challenge) {
+    res.status(500).json({ error: "Challenge does not exists!" });
   }
 
   let deadline = moment(req.body.date_time, "YYYY-MM-DD HH:mm");
@@ -131,19 +114,13 @@ router.post("/challenge", [verifyToken, workout], async function (req, res) {
   deadline = deadline.format("YYYY-MM-DDTHH:mm");
   date_time = date_time.format("YYYY-MM-DDTHH:mm");
 
-  // if (req.body.partner == req.userId) {
-  //   return res
-  //     .status(400)
-  //     .json({ status: false, message: "You cannot challenge yourself" })
-  //     .end();
-  // }
-
   var w_out = new Workout({
     user: req.userId,
     partner: req.body.partner,
-    workout_name: req.body.workout_name,
+    workout_name: challenge.workout_name || "",
     date_time: date_time,
     deadline: deadline,
+    challenge: req.body.workout_id,
     status: 1,
     fitness_level: req.body.fitness_level,
   });
@@ -193,7 +170,9 @@ router.post("/challenge", [verifyToken, workout], async function (req, res) {
               : "Workout created but no video for the fitness level found",
           data: {
             workout_id: w_out["_id"],
-            challenge: ch.length > 0 ? videoDeepCloned : [],
+            // challenge: ch.length > 0 ? videoDeepCloned : [],
+            challenge: challenge ? challenge?.challenge_video : [],
+            challenge_info: challenge,
           },
         });
       }
